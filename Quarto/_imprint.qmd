@@ -1,0 +1,203 @@
+---
+params:
+  selectedschool: Publication_Name
+title: "PSSA Results -- `r params$selectedschool`"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-title: Table of Contents
+    smooth-scroll: true
+    page-layout: full
+    theme: cosmo
+    grid: 
+      margin-width: 225px
+      sidebar-width: 5px
+      body-width: 1175px
+---
+
+```{r setup, include=FALSE}
+library(here)
+library(knitr)
+library(showtext)
+library(sysfonts)
+library(scales)
+library(ggtext)
+library(ggplot2)
+library(stringr)
+# library(MoMAColors)
+knitr::opts_chunk$set(echo = FALSE, fig.showtext = TRUE)
+
+```
+
+```{r load, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+load(here("Clean Data", "summary_pssa.rda"))
+load(here("Clean Data", "summary_tested.rda"))
+
+```
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+year <- as.numeric(pssa_summary[1, "Year"])
+
+#for testing the imprint
+selectedschool <- "A.L. Fitzpatrick School"
+
+school <- pssa_summary |>
+  subset(Publication_Name == params$selectedschool)
+
+district_name <- as.character(school[1, "District_Name"])
+  
+district <- pssa_summary |>
+  subset(District_Name == district_name & Publication_Name == "All")
+
+```
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+district_tested <- tested_summary |>
+  subset(Publication_Name == params$selectedschool)
+
+district_tested <- tested_summary |>
+  subset(District_Name == district_name & Publication_Name == "All")
+
+```
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+wrapper <- function(x, ...) 
+{
+  paste(strwrap(x, ...), collapse = "\n")
+}
+```
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+font_add_google(name = "Rubik", family = "Rubik")
+
+```
+
+```{r colorstuff, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+schools.colors <- c("#2F6C8E", "#43BF71")
+
+color_darkgray <- "#6e6c7a"
+color_darkestgray <- "#262629"
+
+```
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+title_text <- glue::glue(
+  'PSSA Results for ',
+  '<span style = color:{schools.colors["3-5"]}>Grades 3-5</span>',
+  ' and ',
+  '<span style = color:{schools.colors["6-8"]}>Grades 6-8</span>',
+  ' performance'
+)
+
+```
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE}
+
+theme_hbars_light <- function() {
+  theme(
+    text = element_text(family = "Rubik"),
+    
+    panel.background = element_rect(fill = "transparent", color = NA),
+    plot.background = element_rect(fill = "transparent", color = NA),
+    strip.background = element_rect(fill = "transparent", color = NA),
+    rect = element_rect(fill = "transparent"),
+    
+    plot.title = element_text(size = 20, color = color_darkestgray),
+    plot.subtitle = element_text(size = 14, color = color_darkgray),
+    plot.caption = element_text(color = "#8B8F91", face = "italic"),
+    
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    # axis.title.y = element_text(size = 10, color = color_darkgray),
+    
+    axis.text = element_text(size = 12),
+    
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 12, color = color_darkestgray),
+    strip.text.y = element_text(angle = 0, size = 12, color = color_darkestgray),
+    
+    legend.position = "top",
+    legend.box.background = element_rect(fill='transparent', colour='transparent'),
+    legend.key = element_rect(fill='transparent', colour='transparent'),
+    legend.text = element_text(size = 9, color = color_darkestgray),
+    legend.title = element_text(size = 10, color = color_darkestgray),
+    
+    panel.spacing = unit(1, "cm"),
+    
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(color = "#ebebeb", size = .6))
+}
+
+```
+
+## School Results
+
+About `r as.character(district_tested[district_tested$Subject == "English Language Arts" & district_tested$Grade == "All", "pctlabel"])` of students were tested in English Language Arts, and `r as.character(district_tested[district_tested$Subject == "Math" & district_tested$Grade == "All", "pctlabel"])` were tested in Mathematics.
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE, fig.width = 12}
+
+p <- school |>
+  subset(PSSA != "Advanced") |>
+  subset(PSSA != "Proficient") |>
+  subset(Grade == "3-5" | Grade == "6-8") |>
+  
+  ggplot(aes(x = PSSA, y = pct, fill = Grade)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  facet_grid(.~Subject) +
+  labs(title = glue::glue(year, " ", params$selectedschool, " PSSA Results")) +
+  scale_y_continuous(limits = c(0, 1),
+                     breaks = seq(0,1, by = .2),
+                     labels = c("0","20", "40", "60", "80", "100%")) +
+  scale_fill_viridis_d(option = "viridis", direction = 1, begin = .35, end = .7) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 8)) +
+  # data labels
+  geom_text(aes(PSSA, label = pctlabel, vjust = -0.5, color = `Grade`), 
+            position = position_dodge(width = 1),
+            font = "sans", size = 4, fontface = "bold") +
+  scale_colour_viridis_d(option = "viridis", direction = 1, begin = .35, end = .7) +
+  theme_hbars_light()
+        
+
+p
+
+```
+
+
+## District Results
+
+```{r, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE, fig.width = 12}
+
+p <- district |>
+  subset(PSSA != "Advanced") |>
+  subset(PSSA != "Proficient") |>
+  subset(Grade == "3-5" | Grade == "6-8") |>
+  
+  ggplot(aes(x = PSSA, y = pct, fill = Grade)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  facet_grid(.~Subject) +
+  labs(title = glue::glue(year, " ", district_name, " PSSA Results")) +
+  scale_y_continuous(limits = c(0, 1),
+                     breaks = seq(0,1, by = .2),
+                     labels = c("0","20", "40", "60", "80", "100%")) +
+  scale_fill_viridis_d(option = "viridis", direction = 1, begin = .35, end = .7) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 8)) +
+  # data labels
+  geom_text(aes(PSSA, label = pctlabel, vjust = -0.5, color = `Grade`), 
+            position = position_dodge(width = 1),
+            font = "sans", size = 4, fontface = "bold") +
+  scale_colour_viridis_d(option = "viridis", direction = 1, begin = .35, end = .7) +
+  theme_hbars_light()
+        
+
+p
+
+```
