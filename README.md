@@ -1,0 +1,1 @@
+Sample of a project that takes PSSA data and connects it to Philadelphia County schools using IDs to join datasets, creates a table of results, then uses a Quarto template to create a report for each school.
